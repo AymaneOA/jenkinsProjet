@@ -1,9 +1,52 @@
-FROM openjdk:17-jdk-slim
+pipeline {
+    agent any
 
-WORKDIR /app
+    tools {
+        maven 'Maven' 
+        jdk 'Java 11' 
+    }
 
-COPY --from=build /app/target/*.jar app.jar
+    environment {
+        MAVEN_OPTS = '-Xmx1024m'
+    }
 
-EXPOSE 8080
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+        stage('Build') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline exécuté avec succès.'
+        }
+        failure {
+            echo 'Le pipeline a échoué.'
+        }
+    }
+}
